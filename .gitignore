@@ -4,6 +4,7 @@
 epubs/
 books/
 input/
+pdfs/
 output/
 markdown/
 
@@ -13,6 +14,8 @@ markdown/
 *.docx
 *.odt
 *.rtf
+*.mobi
+*.azw3
 
 # ---------------------------------------------------------------
 # macOS

@@ -2,6 +2,8 @@
 
 A simple Python CLI tool for converting EPUB, DOCX, HTML and other documents to Markdown using [Pandoc](https://pandoc.org).
 
+For Chinese readers: see [README_CN.md](README_CN.md).
+
 ## Requirements
 
 - Python 3.10+
@@ -43,6 +45,18 @@ markdown/
 ├── book2.md
 └── book2_media/
 ```
+
+## Input format priority
+
+If you are choosing a source format on purpose, use them in this order:
+
+1. `EPUB` — best default for books and long-form text. It usually preserves chapters, headings, paragraphs, and embedded images better than the other supported formats.
+2. `DOCX` — strong choice for manually authored documents. Structure is often good, but book-like content is usually cleaner in EPUB.
+3. `HTML` / `ODT` — workable when EPUB or DOCX is not available.
+4. `RTF` / `TXT` / `MD` — usable, but structure quality depends heavily on the source.
+5. `PDF` — lowest priority. It is supported as an experimental Pandoc input and may produce poor heading and paragraph structure.
+
+Short version: if you have both `EPUB` and `PDF`, convert the `EPUB`.
 
 ## CLI usage
 
@@ -98,13 +112,13 @@ python convert.py epubs/ -o markdown/ --verbose
 
 | Extension | Pandoc format | Notes |
 |-----------|--------------|-------|
-| `.epub`   | epub | |
-| `.docx`   | docx | |
-| `.html` / `.htm` | html | |
-| `.odt`    | odt | |
-| `.rtf`    | rtf | |
-| `.txt` / `.md` | markdown | |
-| `.pdf`    | pdf | experimental — may produce poor structure |
+| `.epub`   | epub | recommended first choice for books |
+| `.docx`   | docx | recommended when EPUB is unavailable |
+| `.html` / `.htm` | html | acceptable fallback |
+| `.odt`    | odt | acceptable fallback |
+| `.rtf`    | rtf | structure quality varies |
+| `.txt` / `.md` | markdown | minimal structure, depends on source formatting |
+| `.pdf`    | pdf | experimental — lowest priority, may produce poor structure |
 
 File names are automatically slugified: spaces, brackets, and special characters are replaced with underscores.
 
@@ -138,7 +152,10 @@ doc2md/
     └── utils.py        # slugify, logging, pandoc check
 ```
 
-## Legal notice
+## Reuse note
 
-> Do not commit copyrighted EPUB, PDF, or DOCX files to this repository.  
-> Input directories (`epubs/`, `books/`, `input/`) and common document extensions are listed in `.gitignore` and will not be tracked by git.
+Code in this repository is released under the [MIT License](LICENSE).
+
+If you repost project introductions, usage notes, or other non-code written materials from this repository, please keep a clear attribution to the original source.
+
+Input directories (`epubs/`, `books/`, `input/`) and common document extensions are listed in `.gitignore` and will not be tracked by git.

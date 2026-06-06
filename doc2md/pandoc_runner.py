@@ -1,3 +1,4 @@
+import glob
 from pathlib import Path
 
 import pypandoc
@@ -15,14 +16,15 @@ def run_pandoc(
     verbose: bool,
 ) -> None:
     extra_args: list[str] = []
+    escaped_input = glob.escape(str(input_path))
 
     if extract_media and media_dir is not None:
         extra_args += [f"--extract-media={media_dir}"]
 
-    log(verbose, f"pypandoc.convert_file({input_path!s}, to={to_fmt!r}, format={from_fmt!r}, outputfile={output_path!s}, extra_args={extra_args})")
+    log(verbose, f"pypandoc.convert_file({escaped_input!s}, to={to_fmt!r}, format={from_fmt!r}, outputfile={output_path!s}, extra_args={extra_args})")
 
     pypandoc.convert_file(
-        str(input_path),
+        escaped_input,
         to=to_fmt,
         format=from_fmt,
         outputfile=str(output_path),
