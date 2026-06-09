@@ -1,6 +1,6 @@
 # doc2md
 
-A simple Python CLI tool for converting EPUB, DOCX, HTML and other documents to Markdown using [Pandoc](https://pandoc.org).
+A Python pipeline for converting EPUB / DOCX / HTML files to Markdown and automatically generating book introductions via Google Gemini.
 
 For Chinese readers: see [README_CN.md](README_CN.md).
 
@@ -17,96 +17,94 @@ For Chinese readers: see [README_CN.md](README_CN.md).
 | Ubuntu   | `sudo apt install pandoc` |
 | Windows  | `winget install JohnMacFarlane.Pandoc` |
 
-### 2. Install Python dependency
+### 2. Install Python dependencies
 
 ```bash
-pip install pypandoc
+pip install -r requirements.txt
 ```
 
-## Quick start (one-click in VSCode)
+## Full pipeline (convert → organise → intro)
 
-Put your EPUB files inside an `epubs/` folder, then open `run.py` and click the **▶ Run** button in VSCode. Already-converted files are automatically skipped.
+`pipeline.py` is the main entry point:
+
+```bash
+python pipeline.py convert    # epubs/<Folder>/ -> markdown/<Folder>/
+python pipeline.py organize   # re-file markdown/ to mirror epubs/ structure
+python pipeline.py intros     # Gemini reads each book -> intros/<Folder>/<book>/
+python pipeline.py all        # convert + organize + intros
+```
+
+### Categorisation follows your epubs/ folders
+
+Put books into sub-folders under `epubs/`; the same structure is mirrored to `markdown/` and `intros/`:
 
 ```
-doc2md/
-└── epubs/
-    ├── category_a/
-    │   └── book.epub
-    └── book2.epub
+epubs/                  markdown/               intros/
+├── Economics/          ├── Economics/          ├── Economics/
+├── Religion/     -->   ├── Religion/     -->   ├── Religion/
+└── ...                 └── ...                 └── ...
 ```
 
-Output:
+No code changes needed to add a new category — just create the folder.
+
+### Book introductions (Gemini)
+
+For each book, `intros` reads the full Markdown, sends it to Gemini with a structured prompt, and writes two files:
+
+- `website.md` — Hugo article with frontmatter (title / slug / description / category / tags / date)
+- `generic.md` — platform-agnostic intro
+
+Useful flags:
+
+```bash
+python pipeline.py intros --only KEYWORD   # test on one book first
+python pipeline.py intros --overwrite      # regenerate existing intros
+```
+
+### Gemini API key
+
+Copy `.env.example` to `.env` and fill in your keys:
+
+```bash
+cp .env.example .env
+```
+
+`.env.example` uses the multi-key format (automatic rotation on rate-limit):
 
 ```
-markdown/
-├── book.md
-├── book_media/
-│   └── images/
-├── book2.md
-└── book2_media/
+GEMINI_API_KEY_1=your_first_key
+GEMINI_API_KEY_2=your_second_key
+# GEMINI_MODEL=gemini-2.5-flash   # optional, defaults to gemini-2.5-flash
+```
+
+A single key also works — just set `GEMINI_API_KEY_1` alone. Get free keys at <https://aistudio.google.com/apikey>. `.env` is git-ignored.
+
+## Quick one-click conversion (VSCode)
+
+Open `epub2md.py` and click **▶ Run** in VSCode to convert everything in `epubs/` to `markdown/`. Already-converted files are skipped automatically.
+
+## Flexible CLI (any path)
+
+`convert.py` exposes a full CLI for converting arbitrary files or directories:
+
+```bash
+python convert.py input.epub -o output_dir/
+python convert.py epubs/ -o markdown/ --recursive
+python convert.py epubs/ -o markdown/ --overwrite
+python convert.py epubs/ -o markdown/ --from epub --to gfm
+python convert.py epubs/ -o markdown/ --no-extract-media
+python convert.py epubs/ -o markdown/ --verbose
 ```
 
 ## Input format priority
 
-If you are choosing a source format on purpose, use them in this order:
-
-1. `EPUB` — best default for books and long-form text. It usually preserves chapters, headings, paragraphs, and embedded images better than the other supported formats.
-2. `DOCX` — strong choice for manually authored documents. Structure is often good, but book-like content is usually cleaner in EPUB.
-3. `HTML` / `ODT` — workable when EPUB or DOCX is not available.
-4. `RTF` / `TXT` / `MD` — usable, but structure quality depends heavily on the source.
-5. `PDF` — lowest priority. It is supported as an experimental Pandoc input and may produce poor heading and paragraph structure.
-
-Short version: if you have both `EPUB` and `PDF`, convert the `EPUB`.
-
-## CLI usage
-
-### Single file
-
-```bash
-python convert.py input.epub -o output_dir/
-```
-
-### Batch convert a directory
-
-```bash
-python convert.py epubs/ -o markdown/
-```
-
-### Recursive scan (subdirectories)
-
-```bash
-python convert.py epubs/ -o markdown/ --recursive
-```
-
-### Overwrite existing output
-
-```bash
-python convert.py epubs/ -o markdown/ --overwrite
-```
-
-### Force input format
-
-```bash
-python convert.py epubs/ -o markdown/ --from epub
-```
-
-### Specify output format
-
-```bash
-python convert.py epubs/ -o markdown/ --to gfm
-```
-
-### Disable media extraction
-
-```bash
-python convert.py epubs/ -o markdown/ --no-extract-media
-```
-
-### Verbose mode
-
-```bash
-python convert.py epubs/ -o markdown/ --verbose
-```
+| Priority | Format | Notes |
+|----------|--------|-------|
+| 1 | EPUB | best default for books |
+| 2 | DOCX | good for authored documents |
+| 3 | HTML / ODT | acceptable fallback |
+| 4 | RTF / TXT / MD | structure quality varies |
+| 5 | PDF | experimental, often poor structure |
 
 ## Supported formats
 
@@ -117,45 +115,46 @@ python convert.py epubs/ -o markdown/ --verbose
 | `.html` / `.htm` | html | acceptable fallback |
 | `.odt`    | odt | acceptable fallback |
 | `.rtf`    | rtf | structure quality varies |
-| `.txt` / `.md` | markdown | minimal structure, depends on source formatting |
-| `.pdf`    | pdf | experimental — lowest priority, may produce poor structure |
+| `.txt` / `.md` | markdown | minimal structure |
+| `.pdf`    | pdf | experimental — lowest priority |
 
-File names are automatically slugified: spaces, brackets, and special characters are replaced with underscores.
-
-## Conversion summary
-
-After a batch run, doc2md prints a summary:
-
-```
-Total:   10
-Success: 8
-Skipped: 1
-Failed:  1
-```
-
-Skipped = output file already existed and `--overwrite` was not passed.  
-Failed files are listed individually; the rest of the batch continues uninterrupted.
+File names are automatically slugified (spaces and special characters → underscores).
 
 ## Project structure
 
 ```
 doc2md/
-├── convert.py          # CLI entry point
-├── run.py              # one-click VSCode runner (epubs/ -> markdown/)
+├── pipeline.py          # main entry point (convert / organize / intros / all)
+├── epub2md.py           # one-click VSCode runner (epubs/ -> markdown/)
+├── convert.py           # flexible CLI for arbitrary paths
 ├── requirements.txt
+├── .env.example
 ├── .gitignore
-└── doc2md/
-    ├── cli.py          # argument parsing
-    ├── converter.py    # file collection and dispatch
-    ├── pandoc_runner.py # pypandoc wrapper
-    ├── formats.py      # supported format registry
-    └── utils.py        # slugify, logging, pandoc check
+├── doc2md/              # conversion + organisation
+│   ├── cli.py           # argument parsing for convert.py
+│   ├── converter.py     # file collection and dispatch
+│   ├── pandoc_runner.py # pypandoc wrapper
+│   ├── formats.py       # supported format registry
+│   ├── topics.py        # optional category/tag metadata per epubs/ folder
+│   ├── organize.py      # re-files markdown/ to mirror epubs/ structure
+│   └── utils.py         # slugify, logging, pandoc check
+└── md2intro/            # Gemini book-intro generation
+    ├── config.py        # prompt template, field definitions, input limit
+    ├── gemini.py        # Gemini client with multi-key rotation
+    ├── runner.py        # intro scheduler (read → call model → write)
+    ├── parse.py         # parse structured @@FIELD response
+    └── assemble.py      # render website + generic intros
 ```
 
-## Reuse note
+Runtime directories (all git-ignored):
+
+- `epubs/` — source e-books; folder structure defines categories
+- `markdown/` — converted output, mirrors `epubs/`
+- `intros/` — generated intros, mirrors `epubs/`
+- `.env` — API keys
+
+## License
 
 Code in this repository is released under the [MIT License](LICENSE).
 
-If you repost project introductions, usage notes, or other non-code written materials from this repository, please keep a clear attribution to the original source.
-
-Input directories (`epubs/`, `books/`, `input/`) and common document extensions are listed in `.gitignore` and will not be tracked by git.
+Input directories (`epubs/`, `markdown/`, `intros/`) and common document extensions are listed in `.gitignore` and will not be tracked by git.

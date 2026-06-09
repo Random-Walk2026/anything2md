@@ -36,6 +36,16 @@ class Summary:
                 print(f"  {path}: {msg}")
 
 
+def _existing_output(output_dir: Path, slug: str) -> Path | None:
+    """Return an existing ``<slug>.md`` anywhere under output_dir (incl. topic
+    subfolders), so re-running convert skips books already filed by organize."""
+    name = f"{slug}.md"
+    direct = output_dir / name
+    if direct.exists():
+        return direct
+    return next((p for p in output_dir.glob(f"**/{name}") if p.is_file()), None)
+
+
 def _collect_files(input_path: Path, recursive: bool) -> list[Path]:
     if input_path.is_file():
         return [input_path]
@@ -53,14 +63,19 @@ def convert(input_path: Path, opts: ConvertOptions) -> Summary:
     summary = Summary(total=len(files))
     ensure_dir(opts.output_dir)
 
+    # Mirror the source folder layout: epubs/<Folder>/x.epub -> markdown/<Folder>/x.md
+    input_root = input_path if input_path.is_dir() else input_path.parent
+
     for src in files:
-        _convert_file(src, opts, summary)
+        _convert_file(src, input_root, opts, summary)
 
     summary.print()
     return summary
 
 
-def _convert_file(src: Path, opts: ConvertOptions, summary: Summary) -> None:
+def _convert_file(
+    src: Path, input_root: Path, opts: ConvertOptions, summary: Summary
+) -> None:
     suffix = src.suffix.lower()
     from_fmt = opts.from_fmt or SUPPORTED_INPUT_FORMATS.get(suffix)
 
@@ -71,19 +86,24 @@ def _convert_file(src: Path, opts: ConvertOptions, summary: Summary) -> None:
         return
 
     slug = slugify(src.stem)
-    out_file = opts.output_dir / f"{slug}.md"
-    media_dir = opts.output_dir / f"{slug}_media" if opts.extract_media else None
+    rel_parent = src.parent.relative_to(input_root)
+    out_dir = opts.output_dir / rel_parent
+    out_file = out_dir / f"{slug}.md"
+    media_dir = out_dir / f"{slug}_media" if opts.extract_media else None
 
-    if out_file.exists() and not opts.overwrite:
-        print(f"Skipped: {out_file} already exists (use --overwrite to replace)")
-        summary.skipped += 1
-        return
+    if not opts.overwrite:
+        existing = _existing_output(opts.output_dir, slug)
+        if existing is not None:
+            print(f"Skipped: {existing} already exists (use --overwrite to replace)")
+            summary.skipped += 1
+            return
 
     if from_fmt in EXPERIMENTAL_FORMATS:
         print(f"Warning: PDF conversion is experimental and may produce poor Markdown structure. ({src})")
 
     do_extract = opts.extract_media and from_fmt in MEDIA_EXTRACTABLE
 
+    ensure_dir(out_dir)
     try:
         log(opts.verbose, f"Converting: {src} -> {out_file}")
         run_pandoc(
