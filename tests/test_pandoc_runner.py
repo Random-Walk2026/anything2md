@@ -3,11 +3,11 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from doc2md.pandoc_runner import run_pandoc
+from anything2md.pandoc_runner import run_pandoc
 
 
 class RunPandocTests(unittest.TestCase):
-    @patch("doc2md.pandoc_runner.pypandoc.convert_file")
+    @patch("anything2md.pandoc_runner.pypandoc.convert_file")
     def test_escapes_glob_metacharacters_in_input_path(self, mock_convert_file) -> None:
         input_path = Path("/tmp/example [author].epub")
         output_path = Path("/tmp/example.md")

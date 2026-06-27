@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""doc2md book pipeline.
+"""anything2md book pipeline.
 
 Steps:
   convert    epubs/<Folder>/ -> markdown/<Folder>/  (Markdown via pandoc, mirrors folders)
@@ -24,8 +24,8 @@ INTROS = ROOT / "intros"
 
 
 def cmd_convert() -> None:
-    from doc2md.converter import ConvertOptions, convert
-    from doc2md.utils import check_pandoc
+    from anything2md.converter import ConvertOptions, convert
+    from anything2md.utils import check_pandoc
 
     check_pandoc()
     convert(
@@ -35,7 +35,7 @@ def cmd_convert() -> None:
 
 
 def cmd_organize(dry_run: bool) -> None:
-    from doc2md.organize import organize
+    from anything2md.organize import organize
 
     organize(MARKDOWN, EPUBS, dry_run=dry_run)
 

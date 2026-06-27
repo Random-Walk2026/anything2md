@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from doc2md.topics import folder_meta
+from anything2md.topics import folder_meta
 from .parse import Intro
 
 

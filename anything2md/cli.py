@@ -8,7 +8,7 @@ from .utils import check_pandoc
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="doc2md",
+        prog="anything2md",
         description="Convert EPUB, DOCX, HTML and other documents to Markdown via Pandoc.",
     )
     parser.add_argument(

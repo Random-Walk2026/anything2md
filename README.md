@@ -1,6 +1,6 @@
-# doc2md
+# anything2md
 
-A Python pipeline for converting EPUB / DOCX / HTML files to Markdown and automatically generating book introductions via Google Gemini.
+A Python pipeline for converting common document formats to Markdown, with an optional book workflow for categorising converted files and generating book introductions via Google Gemini.
 
 For Chinese readers: see [README_CN.md](README_CN.md).
 
@@ -83,6 +83,8 @@ A single key also works — just set `GEMINI_API_KEY_1` alone. Get free keys at 
 
 Open `epub2md.py` and click **▶ Run** in VSCode to convert everything in `epubs/` to `markdown/`. Already-converted files are skipped automatically.
 
+Open `docx2md.py` the same way to convert everything in `docx/` to `markdown/`.
+
 ## Flexible CLI (any path)
 
 `convert.py` exposes a full CLI for converting arbitrary files or directories:
@@ -123,14 +125,15 @@ File names are automatically slugified (spaces and special characters → unders
 ## Project structure
 
 ```
-doc2md/
+anything2md/
 ├── pipeline.py          # main entry point (convert / organize / intros / all)
 ├── epub2md.py           # one-click VSCode runner (epubs/ -> markdown/)
+├── docx2md.py           # one-click VSCode runner (docx/ -> markdown/)
 ├── convert.py           # flexible CLI for arbitrary paths
 ├── requirements.txt
 ├── .env.example
 ├── .gitignore
-├── doc2md/              # conversion + organisation
+├── anything2md/         # conversion + organisation
 │   ├── cli.py           # argument parsing for convert.py
 │   ├── converter.py     # file collection and dispatch
 │   ├── pandoc_runner.py # pypandoc wrapper
@@ -149,6 +152,7 @@ doc2md/
 Runtime directories (all git-ignored):
 
 - `epubs/` — source e-books; folder structure defines categories
+- `docx/` — source Word documents
 - `markdown/` — converted output, mirrors `epubs/`
 - `intros/` — generated intros, mirrors `epubs/`
 - `.env` — API keys
@@ -157,4 +161,4 @@ Runtime directories (all git-ignored):
 
 Code in this repository is released under the [MIT License](LICENSE).
 
-Input directories (`epubs/`, `markdown/`, `intros/`) and common document extensions are listed in `.gitignore` and will not be tracked by git.
+Input directories (`epubs/`, `docx/`, `markdown/`, `intros/`) and common document extensions are listed in `.gitignore` and will not be tracked by git.

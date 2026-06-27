@@ -8,10 +8,10 @@ ROOT = Path(__file__).parent
 check_pandoc()
 
 convert(
-    input_path=ROOT / "epubs",
+    input_path=ROOT / "docx",
     opts=ConvertOptions(
         output_dir=ROOT / "markdown",
         recursive=True,
-        overwrite=False,   # already converted files are skipped automatically
+        overwrite=False,  # already converted files are skipped automatically
     ),
 )

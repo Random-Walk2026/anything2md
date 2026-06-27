@@ -1,4 +1,4 @@
-"""md2intro — Gemini-powered book-intro generation (sibling package to doc2md).
+"""md2intro — Gemini-powered book-intro generation for anything2md.
 
 For each organized book under ``markdown/<topic>/``, Gemini reads the full
 text and returns a structured ``@@FIELD`` block, which is rendered into:

@@ -7,7 +7,7 @@ article plus a generic intro.
 
 from pathlib import Path
 
-from doc2md.organize import iter_books
+from anything2md.organize import iter_books
 from .assemble import render_generic, render_website
 from .config import GENERIC_FILE, MAX_INPUT_CHARS, RAW_FILE, WEBSITE_FILE
 from .gemini import GeminiError, generate_intro, get_clients, model_name

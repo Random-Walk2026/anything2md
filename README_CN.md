@@ -1,6 +1,6 @@
-# doc2md
+# anything2md
 
-一条「电子书 → Markdown → 分类 → 书籍简介」的全自动 Python 流水线，底层转换使用 [Pandoc](https://pandoc.org)，简介生成使用 Google Gemini API。
+一个把常见文档格式转换为 Markdown 的 Python 工具，并提供「电子书 → Markdown → 分类 → 书籍简介」的可选流水线。底层转换使用 [Pandoc](https://pandoc.org)，简介生成使用 Google Gemini API。
 
 英文说明见 [README.md](README.md)。
 
@@ -49,7 +49,7 @@ epubs/                  markdown/               intros/
 
 - 在 `epubs/` 根目录散放（未放入子文件夹）的书归到 `_uncategorized/`。
 - `organize` 用于把已有的 Markdown 重新归位（例如旧版遗留文件），`--dry-run` 只预览不实际移动。
-- 各分类对应的网站 `category` 与基础 `tags` 在 `doc2md/topics.py` 的 `FOLDER_META` 里配置；未配置的文件夹直接用文件夹名作 `category`。
+- 各分类对应的网站 `category` 与基础 `tags` 在 `anything2md/topics.py` 的 `FOLDER_META` 里配置；未配置的文件夹直接用文件夹名作 `category`。
 
 ### 书籍简介（intros）
 
@@ -92,6 +92,8 @@ GEMINI_API_KEY_2=第二个key
 
 打开 `epub2md.py`，在 VSCode 中点击 **▶ Run**，即可把 `epubs/` 下所有电子书转换到 `markdown/`，已转换的自动跳过。
 
+打开 `docx2md.py` 同样运行，即可把 `docx/` 下所有 Word 文档转换到 `markdown/`。
+
 ## 灵活 CLI（任意路径）
 
 `convert.py` 提供完整的命令行界面，可转换任意路径的文件：
@@ -132,14 +134,15 @@ python convert.py epubs/ -o markdown/ --verbose
 ## 项目结构
 
 ```
-doc2md/
+anything2md/
 ├── pipeline.py          # 主入口（convert / organize / intros / all）
 ├── epub2md.py           # VSCode 一键运行（epubs/ -> markdown/）
+├── docx2md.py           # VSCode 一键运行（docx/ -> markdown/）
 ├── convert.py           # 灵活 CLI（任意路径转换）
 ├── requirements.txt
 ├── .env.example
 ├── .gitignore
-├── doc2md/              # 转换 + 归类
+├── anything2md/         # 转换 + 归类
 │   ├── cli.py           # convert.py 的参数解析
 │   ├── converter.py     # 文件收集与调度
 │   ├── pandoc_runner.py # pypandoc 封装
@@ -158,6 +161,7 @@ doc2md/
 运行时目录（均已在 `.gitignore` 忽略）：
 
 - `epubs/`：源电子书，**文件夹结构即分类**
+- `docx/`：源 Word 文档
 - `markdown/`：转换结果，镜像 `epubs/`
 - `intros/`：简介产物，镜像 `epubs/`
 - `.env`：API key
@@ -166,4 +170,4 @@ doc2md/
 
 代码采用 [MIT License](LICENSE)。
 
-`epubs/`、`markdown/`、`intros/` 等目录已在 `.gitignore` 中默认忽略，不会提交到仓库。
+`epubs/`、`docx/`、`markdown/`、`intros/` 等目录已在 `.gitignore` 中默认忽略，不会提交到仓库。

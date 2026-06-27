@@ -2,6 +2,7 @@
 # Input documents — do NOT commit copyrighted books
 # ---------------------------------------------------------------
 epubs/
+docx/
 books/
 input/
 pdfs/
