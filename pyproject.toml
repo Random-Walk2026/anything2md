@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "anything2md"
+description = "Convert EPUB, DOCX, HTML, PDF and more into clean, LLM-friendly Markdown."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = ["markdown", "pandoc", "markitdown", "ocr", "epub", "docx", "pdf", "llm"]
+dynamic = ["version"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Text Processing :: Markup :: Markdown",
+]
+# Core: EPUB/DOCX/HTML via Pandoc, PDF via MarkItDown.
+dependencies = [
+    "pypandoc>=1.13",
+    "markitdown[pdf]>=0.1",
+]
+
+# Fill in before publishing to PyPI, e.g.:
+#   authors = [{ name = "Your Name", email = "you@example.com" }]
+# [project.urls]
+# Homepage = "https://github.com/<you>/anything2md"
+
+[project.optional-dependencies]
+# OCR for scanned PDFs — also needs the system Tesseract binary + language packs.
+ocr = ["ocrmypdf>=15"]
+# Gemini book-intro pipeline (md2intro).
+intros = ["google-genai>=0.3", "python-dotenv>=1.0"]
+all = ["ocrmypdf>=15", "google-genai>=0.3", "python-dotenv>=1.0"]
+
+[project.scripts]
+anything2md = "anything2md.cli:main"
+
+[tool.setuptools]
+packages = ["anything2md", "md2intro"]
+
+[tool.setuptools.dynamic]
+version = { attr = "anything2md.__version__" }

@@ -1,8 +1,16 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .formats import EXPERIMENTAL_FORMATS, MEDIA_EXTRACTABLE, SUPPORTED_INPUT_FORMATS
+from .formats import (
+    MARKITDOWN_FORMATS,
+    MEDIA_EXTRACTABLE,
+    OCR_FORMATS,
+    SUPPORTED_INPUT_FORMATS,
+)
+from .markitdown_runner import run_markitdown
+from .ocr_runner import OCR_LANGUAGES, run_ocrmypdf
 from .pandoc_runner import run_pandoc
+from .scan_detector import looks_scanned
 from .utils import ensure_dir, log, slugify
 
 
@@ -14,6 +22,8 @@ class ConvertOptions:
     recursive: bool = False
     overwrite: bool = False
     extract_media: bool = True
+    ocr: bool = False                       # OCR scanned PDFs (needs ocrmypdf)
+    ocr_languages: str = OCR_LANGUAGES
     verbose: bool = False
 
 
@@ -98,23 +108,27 @@ def _convert_file(
             summary.skipped += 1
             return
 
-    if from_fmt in EXPERIMENTAL_FORMATS:
-        print(f"Warning: PDF conversion is experimental and may produce poor Markdown structure. ({src})")
-
+    use_markitdown = from_fmt in MARKITDOWN_FORMATS
     do_extract = opts.extract_media and from_fmt in MEDIA_EXTRACTABLE
 
     ensure_dir(out_dir)
     try:
         log(opts.verbose, f"Converting: {src} -> {out_file}")
-        run_pandoc(
-            input_path=src,
-            output_path=out_file,
-            from_fmt=from_fmt,
-            to_fmt=opts.to_fmt,
-            extract_media=do_extract,
-            media_dir=media_dir,
-            verbose=opts.verbose,
-        )
+        if use_markitdown:
+            if not _convert_markitdown(
+                src, out_file, out_dir, slug, from_fmt, opts, summary
+            ):
+                return
+        else:
+            run_pandoc(
+                input_path=src,
+                output_path=out_file,
+                from_fmt=from_fmt,
+                to_fmt=opts.to_fmt,
+                extract_media=do_extract,
+                media_dir=media_dir,
+                verbose=opts.verbose,
+            )
         print(f"OK: {src} -> {out_file}")
         summary.success += 1
     except Exception as exc:
@@ -122,3 +136,37 @@ def _convert_file(
         print(f"Failed: {src} — {msg}")
         summary.errors.append((src, msg))
         summary.failed += 1
+
+
+def _convert_markitdown(
+    src: Path, out_file: Path, out_dir: Path, slug: str, from_fmt: str,
+    opts: ConvertOptions, summary: Summary,
+) -> bool:
+    """Convert via MarkItDown, OCR-ing first if a PDF looks scanned.
+
+    Returns True if ``out_file`` now holds real Markdown, or False if the file
+    was skipped (a scanned PDF with OCR not enabled) — in which case no empty
+    ``.md`` is left behind, so a later ``--ocr`` run re-processes it. Non-PDF
+    inputs (e.g. HTML) are always text and skip scan detection entirely.
+    """
+    run_markitdown(input_path=src, output_path=out_file, verbose=opts.verbose)
+
+    if from_fmt not in OCR_FORMATS:
+        return True
+
+    if not looks_scanned(out_file.read_text(encoding="utf-8")):
+        return True
+
+    if not opts.ocr:
+        out_file.unlink(missing_ok=True)
+        print(f"Skipped: {src} looks scanned (no text layer) — "
+              f"re-run with --ocr to OCR it first.")
+        summary.skipped += 1
+        return False
+
+    # Scanned PDF: OCR into a cached searchable PDF, then re-extract.
+    ocr_pdf = out_dir / f"{slug}.ocr.pdf"
+    if opts.overwrite or not ocr_pdf.exists():
+        run_ocrmypdf(src, ocr_pdf, languages=opts.ocr_languages, verbose=opts.verbose)
+    run_markitdown(input_path=ocr_pdf, output_path=out_file, verbose=opts.verbose)
+    return True

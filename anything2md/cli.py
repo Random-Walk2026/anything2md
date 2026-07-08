@@ -3,6 +3,7 @@ from pathlib import Path
 
 from .converter import ConvertOptions, convert
 from .formats import SUPPORTED_INPUT_FORMATS
+from .ocr_runner import OCR_LANGUAGES
 from .utils import check_pandoc
 
 
@@ -61,6 +62,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Disable media extraction",
     )
     parser.add_argument(
+        "--ocr",
+        action="store_true",
+        help="OCR scanned PDFs before converting (requires ocrmypdf + Tesseract)",
+    )
+    parser.add_argument(
+        "--ocr-lang",
+        default=OCR_LANGUAGES,
+        dest="ocr_languages",
+        metavar="LANGS",
+        help=f"Tesseract languages for OCR (default: {OCR_LANGUAGES})",
+    )
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help="Show pandoc commands and extra detail",
@@ -85,6 +98,8 @@ def main() -> None:
         recursive=args.recursive,
         overwrite=args.overwrite,
         extract_media=args.extract_media,
+        ocr=args.ocr,
+        ocr_languages=args.ocr_languages,
         verbose=args.verbose,
     )
 

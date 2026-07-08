@@ -2,12 +2,14 @@
 
 A Python pipeline for converting common document formats to Markdown, with an optional book workflow for categorising converted files and generating book introductions via Google Gemini.
 
+EPUB / DOCX / ODT and friends go through [Pandoc](https://pandoc.org); PDF and HTML are routed through Microsoft [MarkItDown](https://github.com/microsoft/markitdown), which produces cleaner, LLM-friendly Markdown — Pandoc cannot read PDF at all, and on CSS-heavy HTML (pages / slide decks) it leaves raw `<div>` markup, whereas MarkItDown strips it to plain text.
+
 For Chinese readers: see [README_CN.md](README_CN.md).
 
 ## Requirements
 
 - Python 3.10+
-- [Pandoc](https://pandoc.org/installing.html)
+- [Pandoc](https://pandoc.org/installing.html) (for EPUB/DOCX/HTML/… — not needed for PDF-only use)
 
 ### 1. Install Pandoc
 
@@ -28,7 +30,7 @@ pip install -r requirements.txt
 `pipeline.py` is the main entry point:
 
 ```bash
-python pipeline.py convert    # epubs/<Folder>/ -> markdown/<Folder>/
+python pipeline.py convert    # epubs/ (pandoc) + pdfs/ (MarkItDown) -> markdown/<Folder>/
 python pipeline.py organize   # re-file markdown/ to mirror epubs/ structure
 python pipeline.py intros     # Gemini reads each book -> intros/<Folder>/<book>/
 python pipeline.py all        # convert + organize + intros
@@ -85,6 +87,27 @@ Open `epub2md.py` and click **▶ Run** in VSCode to convert everything in `epub
 
 Open `docx2md.py` the same way to convert everything in `docx/` to `markdown/`.
 
+Open `pdf2md.py` the same way to convert everything in `pdfs/` to `markdown/` via MarkItDown. Scanned/image-only PDFs are detected automatically: by default they are skipped with a warning (no empty `.md` is written). To OCR them first, see below.
+
+### OCR for scanned PDFs (optional)
+
+Text PDFs need nothing extra. For scanned/image-only PDFs, pass `--ocr` to run them through [OCRmyPDF](https://github.com/ocrmypdf/OCRmyPDF) + Tesseract before conversion:
+
+```bash
+python convert.py scanned.pdf -o out/ --ocr
+python pipeline.py convert --ocr          # OCR scanned PDFs in the batch
+python convert.py scanned.pdf -o out/ --ocr --ocr-lang chi_tra+eng
+```
+
+OCR is an optional, system-level dependency (not installed by `requirements.txt`):
+
+| Platform | Command |
+|----------|---------|
+| macOS    | `brew install ocrmypdf tesseract tesseract-lang` |
+| Ubuntu   | `sudo apt install ocrmypdf tesseract-ocr tesseract-ocr-chi-sim tesseract-ocr-chi-tra` |
+
+The OCR'd searchable PDF is cached next to the output (`<slug>.ocr.pdf`), so re-runs skip re-OCR. Default OCR languages: `chi_sim+chi_tra+eng`.
+
 ## Flexible CLI (any path)
 
 `convert.py` exposes a full CLI for converting arbitrary files or directories:
@@ -106,19 +129,19 @@ python convert.py epubs/ -o markdown/ --verbose
 | 2 | DOCX | good for authored documents |
 | 3 | HTML / ODT | acceptable fallback |
 | 4 | RTF / TXT / MD | structure quality varies |
-| 5 | PDF | experimental, often poor structure |
+| 5 | PDF | via MarkItDown; text PDFs good, scanned PDFs need OCR |
 
 ## Supported formats
 
-| Extension | Pandoc format | Notes |
-|-----------|--------------|-------|
-| `.epub`   | epub | recommended first choice for books |
-| `.docx`   | docx | recommended when EPUB is unavailable |
-| `.html` / `.htm` | html | acceptable fallback |
-| `.odt`    | odt | acceptable fallback |
-| `.rtf`    | rtf | structure quality varies |
-| `.txt` / `.md` | markdown | minimal structure |
-| `.pdf`    | pdf | experimental — lowest priority |
+| Extension | Engine | Notes |
+|-----------|--------|-------|
+| `.epub`   | pandoc (epub) | recommended first choice for books |
+| `.docx`   | pandoc (docx) | recommended when EPUB is unavailable |
+| `.html` / `.htm` | MarkItDown | strips CSS/layout noise; best for pages & slide decks |
+| `.odt`    | pandoc (odt) | acceptable fallback |
+| `.rtf`    | pandoc (rtf) | structure quality varies |
+| `.txt` / `.md` | pandoc (markdown) | minimal structure |
+| `.pdf`    | MarkItDown (+ optional OCRmyPDF) | clean text from copyable PDFs; scanned PDFs auto-detected, OCR'd with `--ocr` |
 
 File names are automatically slugified (spaces and special characters → underscores).
 
@@ -129,14 +152,18 @@ anything2md/
 ├── pipeline.py          # main entry point (convert / organize / intros / all)
 ├── epub2md.py           # one-click VSCode runner (epubs/ -> markdown/)
 ├── docx2md.py           # one-click VSCode runner (docx/ -> markdown/)
+├── pdf2md.py            # one-click VSCode runner (pdfs/ -> markdown/ via MarkItDown)
 ├── convert.py           # flexible CLI for arbitrary paths
 ├── requirements.txt
 ├── .env.example
 ├── .gitignore
 ├── anything2md/         # conversion + organisation
 │   ├── cli.py           # argument parsing for convert.py
-│   ├── converter.py     # file collection and dispatch
+│   ├── converter.py     # file collection and dispatch (pandoc vs MarkItDown)
 │   ├── pandoc_runner.py # pypandoc wrapper
+│   ├── markitdown_runner.py # MarkItDown wrapper (PDF)
+│   ├── scan_detector.py # detect scanned/image-only PDFs
+│   ├── ocr_runner.py    # OCRmyPDF wrapper (optional, for scanned PDFs)
 │   ├── formats.py       # supported format registry
 │   ├── topics.py        # optional category/tag metadata per epubs/ folder
 │   ├── organize.py      # re-files markdown/ to mirror epubs/ structure
@@ -153,6 +180,7 @@ Runtime directories (all git-ignored):
 
 - `epubs/` — source e-books; folder structure defines categories
 - `docx/` — source Word documents
+- `pdfs/` — source PDFs (converted via MarkItDown)
 - `markdown/` — converted output, mirrors `epubs/`
 - `intros/` — generated intros, mirrors `epubs/`
 - `.env` — API keys

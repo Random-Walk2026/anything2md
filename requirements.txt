@@ -1,3 +1,4 @@
 pypandoc>=1.13
+markitdown[pdf]>=0.1
 google-genai>=0.3
 python-dotenv>=1.0
