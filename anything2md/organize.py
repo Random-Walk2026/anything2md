@@ -1,19 +1,21 @@
-"""Keep ``markdown/`` foldered the same way as ``epubs/``.
+"""Keep ``markdown/`` foldered the same way as its source directories.
 
 ``convert`` already mirrors the source layout for freshly converted books. This
 module re-files *existing* Markdown (e.g. books converted before this layout, or
-left at the root) so every book sits under ``markdown/<epubs-folder>/``. The
-mapping is derived from ``epubs/`` by slugifying each source filename, so it
-matches the converter's output names exactly.
+left at the root) so every book sits under ``markdown/<source-folder>/``. The
+mapping is derived by slugifying each source filename, so it matches the
+converter's output names exactly.
 """
 
 import shutil
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from .formats import SUPPORTED_INPUT_FORMATS
-from .topics import UNCATEGORIZED
 from .utils import slugify
+
+UNCATEGORIZED = "_uncategorized"
 
 
 @dataclass
@@ -32,27 +34,41 @@ class OrganizeSummary:
             print(f"\nUncategorized ({len(self.uncategorized)}) -> {UNCATEGORIZED}/:")
             for stem in self.uncategorized:
                 print(f"  {stem}")
-            print("These have no matching source folder under epubs/.")
+            print(
+                "These have no matching folder under the configured "
+                "source directories."
+            )
 
 
-def slug_to_folder(epubs_dir: Path) -> dict[str, str]:
-    """Map each book's slug -> its top-level folder name under epubs/."""
+def _source_paths(source_dirs: Path | Iterable[Path]) -> tuple[Path, ...]:
+    if isinstance(source_dirs, Path):
+        return (source_dirs,)
+    return tuple(source_dirs)
+
+
+def slug_to_folder(source_dirs: Path | Iterable[Path]) -> dict[str, str]:
+    """Map each source slug to its top-level folder name."""
     mapping: dict[str, str] = {}
-    if not epubs_dir.is_dir():
-        return mapping
-    for src in epubs_dir.rglob("*"):
-        if not src.is_file() or src.suffix.lower() not in SUPPORTED_INPUT_FORMATS:
+    for source_dir in _source_paths(source_dirs):
+        if not source_dir.is_dir():
             continue
-        rel = src.parent.relative_to(epubs_dir)
-        folder = rel.parts[0] if rel.parts else ""
-        if folder:  # ignore loose files at the epubs root
-            mapping[slugify(src.stem)] = folder
+        for src in source_dir.rglob("*"):
+            if not src.is_file() or src.suffix.lower() not in SUPPORTED_INPUT_FORMATS:
+                continue
+            rel = src.parent.relative_to(source_dir)
+            folder = rel.parts[0] if rel.parts else ""
+            if folder:  # ignore loose files at the source root
+                mapping[slugify(src.stem)] = folder
     return mapping
 
 
-def organize(markdown_dir: Path, epubs_dir: Path, dry_run: bool = False) -> OrganizeSummary:
+def organize(
+    markdown_dir: Path,
+    source_dirs: Path | Iterable[Path],
+    dry_run: bool = False,
+) -> OrganizeSummary:
     summary = OrganizeSummary()
-    mapping = slug_to_folder(epubs_dir)
+    mapping = slug_to_folder(source_dirs)
 
     # Every markdown file currently anywhere under markdown_dir.
     for md in sorted(markdown_dir.rglob("*.md")):
@@ -93,12 +109,3 @@ def _prune_empty_dirs(root: Path) -> None:
     for d in sorted(root.rglob("*"), reverse=True):
         if d.is_dir() and not any(d.iterdir()):
             d.rmdir()
-
-
-def iter_books(markdown_dir: Path):
-    """Yield (folder, md_path) for every book under a category folder."""
-    for folder_dir in sorted(markdown_dir.iterdir()):
-        if not folder_dir.is_dir() or folder_dir.name.endswith("_media"):
-            continue
-        for md in sorted(folder_dir.glob("*.md")):
-            yield folder_dir.name, md

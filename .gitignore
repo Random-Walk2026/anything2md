@@ -9,7 +9,6 @@ input/
 pdfs/
 output/
 markdown/
-intros/
 
 # Document file types (anywhere in the repo)
 *.epub
@@ -51,3 +50,4 @@ venv/
 # Claude Code
 # ---------------------------------------------------------------
 CLAUDE.md
+AGENTS.md

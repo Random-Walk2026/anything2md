@@ -3,7 +3,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
-from anything2md.converter import ConvertOptions, convert
+from anything2md.converter import ConvertOptions, convert, requires_pandoc
 
 
 class ConverterPdfRoutingTests(unittest.TestCase):
@@ -134,6 +134,16 @@ class ConverterPdfRoutingTests(unittest.TestCase):
         pan.assert_called_once()
         mit.assert_not_called()
         self.assertTrue((self.out_dir / "novel.md").exists())
+
+    def test_pdf_only_does_not_require_pandoc(self) -> None:
+        self.assertFalse(requires_pandoc(self.pdf_dir))
+
+    def test_epub_input_requires_pandoc(self) -> None:
+        epub_dir = self.root / "epubs"
+        epub_dir.mkdir()
+        (epub_dir / "novel.epub").write_bytes(b"fake epub")
+
+        self.assertTrue(requires_pandoc(epub_dir))
 
 
 if __name__ == "__main__":

@@ -1,8 +1,7 @@
 import argparse
 from pathlib import Path
 
-from .converter import ConvertOptions, convert
-from .formats import SUPPORTED_INPUT_FORMATS
+from .converter import ConvertOptions, convert, requires_pandoc
 from .ocr_runner import OCR_LANGUAGES
 from .utils import check_pandoc
 
@@ -10,7 +9,7 @@ from .utils import check_pandoc
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="anything2md",
-        description="Convert EPUB, DOCX, HTML and other documents to Markdown via Pandoc.",
+        description="Convert common document formats into clean Markdown.",
     )
     parser.add_argument(
         "input",
@@ -85,11 +84,11 @@ def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
 
-    check_pandoc()
-
     input_path: Path = args.input
     if not input_path.exists():
         parser.error(f"Input path does not exist: {input_path}")
+    if requires_pandoc(input_path, args.recursive, args.from_fmt):
+        check_pandoc()
 
     opts = ConvertOptions(
         output_dir=args.output_dir,

@@ -1,6 +1,6 @@
 # anything2md
 
-A Python pipeline for converting common document formats to Markdown, with an optional book workflow for categorising converted files and generating book introductions via Google Gemini.
+A Python toolkit for converting common document formats to clean, LLM-friendly Markdown.
 
 EPUB / DOCX / ODT and friends go through [Pandoc](https://pandoc.org); PDF and HTML are routed through Microsoft [MarkItDown](https://github.com/microsoft/markitdown), which produces cleaner, LLM-friendly Markdown — Pandoc cannot read PDF at all, and on CSS-heavy HTML (pages / slide decks) it leaves raw `<div>` markup, whereas MarkItDown strips it to plain text.
 
@@ -9,7 +9,7 @@ For Chinese readers: see [README_CN.md](README_CN.md).
 ## Requirements
 
 - Python 3.10+
-- [Pandoc](https://pandoc.org/installing.html) (for EPUB/DOCX/HTML/… — not needed for PDF-only use)
+- [Pandoc](https://pandoc.org/installing.html) (for EPUB/DOCX/ODT/RTF/TXT/MD — not needed for PDF/HTML-only use)
 
 ### 1. Install Pandoc
 
@@ -25,61 +25,28 @@ For Chinese readers: see [README_CN.md](README_CN.md).
 pip install -r requirements.txt
 ```
 
-## Full pipeline (convert → organise → intro)
+## Batch pipeline (convert → organise)
 
 `pipeline.py` is the main entry point:
 
 ```bash
 python pipeline.py convert    # epubs/ (pandoc) + pdfs/ (MarkItDown) -> markdown/<Folder>/
-python pipeline.py organize   # re-file markdown/ to mirror epubs/ structure
-python pipeline.py intros     # Gemini reads each book -> intros/<Folder>/<book>/
-python pipeline.py all        # convert + organize + intros
+python pipeline.py organize   # re-file markdown/ to mirror source-folder structure
+python pipeline.py all        # convert + organize
 ```
 
-### Categorisation follows your epubs/ folders
+### Folder structure follows the source
 
-Put books into sub-folders under `epubs/`; the same structure is mirrored to `markdown/` and `intros/`:
-
-```
-epubs/                  markdown/               intros/
-├── Economics/          ├── Economics/          ├── Economics/
-├── Religion/     -->   ├── Religion/     -->   ├── Religion/
-└── ...                 └── ...                 └── ...
-```
-
-No code changes needed to add a new category — just create the folder.
-
-### Book introductions (Gemini)
-
-For each book, `intros` reads the full Markdown, sends it to Gemini with a structured prompt, and writes two files:
-
-- `website.md` — Hugo article with frontmatter (title / slug / description / category / tags / date)
-- `generic.md` — platform-agnostic intro
-
-Useful flags:
-
-```bash
-python pipeline.py intros --only KEYWORD   # test on one book first
-python pipeline.py intros --overwrite      # regenerate existing intros
-```
-
-### Gemini API key
-
-Copy `.env.example` to `.env` and fill in your keys:
-
-```bash
-cp .env.example .env
-```
-
-`.env.example` uses the multi-key format (automatic rotation on rate-limit):
+Put files into sub-folders under `epubs/` or `pdfs/`; the same structure is mirrored to `markdown/`:
 
 ```
-GEMINI_API_KEY_1=your_first_key
-GEMINI_API_KEY_2=your_second_key
-# GEMINI_MODEL=gemini-2.5-flash   # optional, defaults to gemini-2.5-flash
+epubs/Economics/book.epub  ──> markdown/Economics/book.md
+pdfs/Reports/report.pdf    ──> markdown/Reports/report.md
 ```
 
-A single key also works — just set `GEMINI_API_KEY_1` alone. Get free keys at <https://aistudio.google.com/apikey>. `.env` is git-ignored.
+No code changes are needed to add a new category—just create the folder. The
+`organize` command is mainly for older Markdown files that predate mirrored
+output; `--dry-run` previews moves without changing files.
 
 ## Quick one-click conversion (VSCode)
 
@@ -149,31 +116,25 @@ File names are automatically slugified (spaces and special characters → unders
 
 ```
 anything2md/
-├── pipeline.py          # main entry point (convert / organize / intros / all)
+├── pipeline.py          # batch entry point (convert / organize / all)
 ├── epub2md.py           # one-click VSCode runner (epubs/ -> markdown/)
 ├── docx2md.py           # one-click VSCode runner (docx/ -> markdown/)
 ├── pdf2md.py            # one-click VSCode runner (pdfs/ -> markdown/ via MarkItDown)
 ├── convert.py           # flexible CLI for arbitrary paths
 ├── requirements.txt
-├── .env.example
 ├── .gitignore
 ├── anything2md/         # conversion + organisation
 │   ├── cli.py           # argument parsing for convert.py
 │   ├── converter.py     # file collection and dispatch (pandoc vs MarkItDown)
 │   ├── pandoc_runner.py # pypandoc wrapper
-│   ├── markitdown_runner.py # MarkItDown wrapper (PDF)
+│   ├── markitdown_runner.py # MarkItDown wrapper (PDF / HTML)
 │   ├── scan_detector.py # detect scanned/image-only PDFs
 │   ├── ocr_runner.py    # OCRmyPDF wrapper (optional, for scanned PDFs)
 │   ├── formats.py       # supported format registry
-│   ├── topics.py        # optional category/tag metadata per epubs/ folder
-│   ├── organize.py      # re-files markdown/ to mirror epubs/ structure
+│   ├── organize.py      # re-files markdown/ to mirror source folders
 │   └── utils.py         # slugify, logging, pandoc check
-└── md2intro/            # Gemini book-intro generation
-    ├── config.py        # prompt template, field definitions, input limit
-    ├── gemini.py        # Gemini client with multi-key rotation
-    ├── runner.py        # intro scheduler (read → call model → write)
-    ├── parse.py         # parse structured @@FIELD response
-    └── assemble.py      # render website + generic intros
+└── scripts/
+    └── check_markdown.py # lightweight Markdown output QA
 ```
 
 Runtime directories (all git-ignored):
@@ -181,12 +142,10 @@ Runtime directories (all git-ignored):
 - `epubs/` — source e-books; folder structure defines categories
 - `docx/` — source Word documents
 - `pdfs/` — source PDFs (converted via MarkItDown)
-- `markdown/` — converted output, mirrors `epubs/`
-- `intros/` — generated intros, mirrors `epubs/`
-- `.env` — API keys
+- `markdown/` — converted output, mirrors source folders
 
 ## License
 
 Code in this repository is released under the [MIT License](LICENSE).
 
-Input directories (`epubs/`, `docx/`, `markdown/`, `intros/`) and common document extensions are listed in `.gitignore` and will not be tracked by git.
+Input directories (`epubs/`, `docx/`, `pdfs/`, `markdown/`) and common document extensions are listed in `.gitignore` and will not be tracked by git.

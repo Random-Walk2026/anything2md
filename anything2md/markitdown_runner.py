@@ -10,9 +10,9 @@ def run_markitdown(
 ) -> None:
     """Convert a file to Markdown with Microsoft MarkItDown.
 
-    Used for PDF, where Pandoc cannot read the source directly. MarkItDown
-    aims for clean, LLM-friendly Markdown; it does not OCR scanned/image-only
-    PDFs (those come through nearly empty and need an OCR step first).
+    Used for PDF, which Pandoc cannot read directly, and for HTML where it
+    strips presentational layout noise. MarkItDown does not OCR scanned or
+    image-only PDFs (those come through nearly empty and need OCR first).
     """
     try:
         from markitdown import MarkItDown

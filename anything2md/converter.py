@@ -68,6 +68,22 @@ def _collect_files(input_path: Path, recursive: bool) -> list[Path]:
     ]
 
 
+def requires_pandoc(
+    input_path: Path,
+    recursive: bool = False,
+    from_fmt: str | None = None,
+) -> bool:
+    """Return whether the selected inputs need the Pandoc engine."""
+    files = _collect_files(input_path, recursive)
+    if from_fmt is not None:
+        return bool(files) and from_fmt not in MARKITDOWN_FORMATS
+    return any(
+        (fmt := SUPPORTED_INPUT_FORMATS.get(src.suffix.lower())) is not None
+        and fmt not in MARKITDOWN_FORMATS
+        for src in files
+    )
+
+
 def convert(input_path: Path, opts: ConvertOptions) -> Summary:
     files = _collect_files(input_path, opts.recursive)
     summary = Summary(total=len(files))
